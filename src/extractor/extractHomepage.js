@@ -21,9 +21,9 @@ export const extractHomepage = (html) => {
     genres: [],
   };
 
-  const $spotlight = $('.deslide-wrap .swiper-wrapper .swiper-slide');
-  const $trending = $('#trending-home .swiper-container .swiper-slide');
-  const $featured = $('#anime-featured .anif-blocks .row .anif-block');
+  const $spotlight = $('.deslide-wrap .swiper-slide');
+  const $trending = $('#trending-home .swiper-slide');
+  const $featured = $('#anime-featured .anif-block');
   const $home = $('.block_area.block_area_home');
   const $top10 = $('.block_area .cbox');
   const $genres = $('.sb-genre-list');
@@ -46,29 +46,55 @@ export const extractHomepage = (html) => {
         eps: null,
       },
     };
-    obj.rank = i + 1;
-    obj.id = $(el).find('.desi-buttons a').first().attr('href').split('/').at(-1);
-    obj.poster = $(el).find('.deslide-cover .film-poster-img').attr('data-src');
+    obj.rank = i + 1; // Rank is based on loop index, so it's always present.
 
-    const titles = $(el).find('.desi-head-title');
-    obj.title = titles.text();
-    obj.alternativeTitle = titles.attr('data-jname');
+    const idLinkEl = $(el).find('.desi-buttons a').first();
+    const idHref = idLinkEl.length ? idLinkEl.attr('href') : null;
+    obj.id = idHref ? idHref.split('/').at(-1) : null;
 
-    obj.synopsis = $(el).find('.desi-description').text().trim();
+    const posterEl = $(el).find('.film-poster-img');
+    obj.poster = posterEl.length ? posterEl.attr('data-src') : null;
 
-    const details = $(el).find('.sc-detail');
-    obj.type = details.find('.scd-item').eq(0).text().trim(); // Grabs 'TV'
-    obj.duration = details.find('.scd-item').eq(1).text().trim(); // Grabs '24m'
-    obj.aired = details.find('.scd-item.m-hide').text().trim(); // Grabs 'Oct 20, 1999'
-    obj.quality = details.find('.scd-item .quality').text().trim(); // Grabs 'HD'
+    const titlesEl = $(el).find('.desi-head-title');
+    obj.title = titlesEl.length ? titlesEl.text() : null;
+    obj.alternativeTitle = titlesEl.length ? titlesEl.attr('data-jname') : null;
 
-    obj.episodes.sub = Number(details.find('.tick-sub').text().trim()); // Grabs '1122'
-    obj.episodes.dub = Number(details.find('.tick-dub').text().trim()); // Grabs '1096'
+    const synopsisEl = $(el).find('.desi-description');
+    obj.synopsis = synopsisEl.length ? synopsisEl.text().trim() : null;
 
-    const epsText = details.find('.tick-eps').length
-      ? details.find('.tick-eps').text().trim()
-      : details.find('.tick-sub').text().trim();
-    obj.episodes.eps = Number(epsText);
+    const detailsEl = $(el).find('.sc-detail');
+    if (detailsEl.length) {
+      const typeItemEl = detailsEl.find('.scd-item').eq(0);
+      obj.type = typeItemEl.length ? typeItemEl.text().trim() : null;
+
+      const durationItemEl = detailsEl.find('.scd-item').eq(1);
+      obj.duration = durationItemEl.length ? durationItemEl.text().trim() : null;
+
+      const airedItemEl = detailsEl.find('.scd-item.m-hide');
+      obj.aired = airedItemEl.length ? airedItemEl.text().trim() : null;
+
+      const qualityItemEl = detailsEl.find('.scd-item .quality');
+      obj.quality = qualityItemEl.length ? qualityItemEl.text().trim() : null;
+
+      const subText = detailsEl.find('.tick-sub').text().trim();
+      obj.episodes.sub = subText && !isNaN(Number(subText)) ? Number(subText) : 0;
+
+      const dubText = detailsEl.find('.tick-dub').text().trim();
+      obj.episodes.dub = dubText && !isNaN(Number(dubText)) ? Number(dubText) : 0;
+
+      const epsEl = detailsEl.find('.tick-eps');
+      const subEl = detailsEl.find('.tick-sub');
+      const epsTextVal = epsEl.length ? epsEl.text().trim() : (subEl.length ? subEl.text().trim() : '');
+      obj.episodes.eps = epsTextVal && !isNaN(Number(epsTextVal)) ? Number(epsTextVal) : 0;
+    } else {
+      obj.type = null;
+      obj.duration = null;
+      obj.aired = null;
+      obj.quality = null;
+      obj.episodes.sub = 0;
+      obj.episodes.dub = 0;
+      obj.episodes.eps = 0;
+    }
 
     response.spotlight.push(obj);
   });
@@ -80,24 +106,25 @@ export const extractHomepage = (html) => {
       poster: null,
       id: null,
     };
+    obj.rank = i + 1; // Rank is based on loop index.
 
-    const titleEl = $(el).find('.item .film-title');
-    obj.title = titleEl.text();
-    obj.alternativeTitle = titleEl.attr('data-jname');
-
-    obj.rank = i + 1;
+    const titleEl = $(el).find('.film-title');
+    obj.title = titleEl.length ? titleEl.text() : null;
+    obj.alternativeTitle = titleEl.length ? titleEl.attr('data-jname') : null;
 
     const imageEl = $(el).find('.film-poster');
+    const imgEl = imageEl.length ? imageEl.find('img') : null;
+    obj.poster = imgEl && imgEl.length ? imgEl.attr('data-src') : null;
 
-    obj.poster = imageEl.find('img').attr('data-src');
-    obj.id = imageEl.attr('href').split('/').at(-1);
+    const imageHref = imageEl.length ? imageEl.attr('href') : null;
+    obj.id = imageHref ? imageHref.split('/').at(-1) : null;
 
     response.trending.push(obj);
   });
 
   $($featured).each((i, el) => {
     const data = $(el)
-      .find('.anif-block-ul ul li')
+      .find('.anif-block-ul li')
       .map((index, item) => {
         const obj = {
           title: null,
@@ -111,36 +138,44 @@ export const extractHomepage = (html) => {
             eps: null,
           },
         };
-        const titleEl = $(item).find('.film-detail .film-name a');
-        obj.title = titleEl.attr('title');
-        obj.alternativeTitle = titleEl.attr('data-jname');
-        obj.id = titleEl.attr('href').split('/').at(-1);
+        const titleLinkEl = $(item).find('.film-name a');
+        obj.title = titleLinkEl.length ? titleLinkEl.attr('title') : null;
+        obj.alternativeTitle = titleLinkEl.length ? titleLinkEl.attr('data-jname') : null;
+        const titleHref = titleLinkEl.length ? titleLinkEl.attr('href') : null;
+        obj.id = titleHref ? titleHref.split('/').at(-1) : null;
 
-        obj.poster = $(item).find('.film-poster .film-poster-img').attr('data-src');
-        obj.type = $(item).find('.fd-infor .fdi-item').text();
+        const posterEl = $(item).find('.film-poster-img');
+        obj.poster = posterEl.length ? posterEl.attr('data-src') : null;
 
-        obj.episodes.sub = Number($(item).find('.fd-infor .tick-sub').text());
-        obj.episodes.dub = Number($(item).find('.fd-infor .tick-dub').text());
+        const typeEl = $(item).find('.fd-infor .fdi-item');
+        obj.type = typeEl.length ? typeEl.text() : null;
 
-        const epsText = $(item).find('.fd-infor .tick-eps').length
-          ? $(item).find('.fd-infor .tick-eps').text()
-          : $(item).find('.fd-infor .tick-sub').text();
+        const subText = $(item).find('.fd-infor .tick-sub').text();
+        obj.episodes.sub = subText && !isNaN(Number(subText)) ? Number(subText) : 0;
 
-        obj.episodes.eps = Number(epsText);
+        const dubText = $(item).find('.fd-infor .tick-dub').text();
+        obj.episodes.dub = dubText && !isNaN(Number(dubText)) ? Number(dubText) : 0;
+
+        const epsEl = $(item).find('.fd-infor .tick-eps');
+        const subEl = $(item).find('.fd-infor .tick-sub');
+        const epsTextVal = epsEl.length ? epsEl.text() : (subEl.length ? subEl.text() : '');
+        obj.episodes.eps = epsTextVal && !isNaN(Number(epsTextVal)) ? Number(epsTextVal) : 0;
 
         return obj;
       })
       .get();
 
-    const dataType = $(el).find('.anif-block-header').text().replace(/\s+/g, '');
-    const normalizedDataType = dataType.charAt(0).toLowerCase() + dataType.slice(1);
-
-    response[normalizedDataType] = data;
+    const headerEl = $(el).find('.anif-block-header');
+    const dataType = headerEl.length ? headerEl.text().replace(/\s+/g, '') : '';
+    if (dataType) {
+      const normalizedDataType = dataType.charAt(0).toLowerCase() + dataType.slice(1);
+      response[normalizedDataType] = data;
+    }
   });
 
   $($home).each((i, el) => {
     const data = $(el)
-      .find('.tab-content .film_list-wrap .flw-item')
+      .find('.flw-item')
       .map((index, item) => {
         const obj = {
           title: null,
@@ -153,54 +188,86 @@ export const extractHomepage = (html) => {
             eps: null,
           },
         };
-        const titleEl = $(item).find('.film-detail .film-name .dynamic-name');
-        obj.title = titleEl.attr('title');
-        obj.alternativeTitle = titleEl.attr('data-jname');
-        obj.id = titleEl.attr('href').split('/').at(-1);
+        const titleLinkEl = $(item).find('.film-name .dynamic-name');
+        obj.title = titleLinkEl.length ? titleLinkEl.attr('title') : null;
+        obj.alternativeTitle = titleLinkEl.length ? titleLinkEl.attr('data-jname') : null;
+        const titleHref = titleLinkEl.length ? titleLinkEl.attr('href') : null;
+        obj.id = titleHref ? titleHref.split('/').at(-1) : null;
 
-        obj.poster = $(item).find('.film-poster img').attr('data-src');
+        const posterImgEl = $(item).find('.film-poster img');
+        obj.poster = posterImgEl.length ? posterImgEl.attr('data-src') : null;
 
         const episodesEl = $(item).find('.film-poster .tick');
-        obj.episodes.sub = Number($(episodesEl).find('.tick-sub').text());
-        obj.episodes.dub = Number($(episodesEl).find('.tick-dub').text());
+        if (episodesEl.length) {
+          const subText = $(episodesEl).find('.tick-sub').text();
+          obj.episodes.sub = subText && !isNaN(Number(subText)) ? Number(subText) : 0;
 
-        const epsText = $(episodesEl).find('.tick-eps').length
-          ? $(episodesEl).find('.tick-eps').text()
-          : $(episodesEl).find('.tick-sub').text();
+          const dubText = $(episodesEl).find('.tick-dub').text();
+          obj.episodes.dub = dubText && !isNaN(Number(dubText)) ? Number(dubText) : 0;
 
-        obj.episodes.eps = Number(epsText);
-
+          const epsTickEl = $(episodesEl).find('.tick-eps');
+          const subTickEl = $(episodesEl).find('.tick-sub');
+          const epsTextVal = epsTickEl.length ? epsTickEl.text() : (subTickEl.length ? subTickEl.text() : '');
+          obj.episodes.eps = epsTextVal && !isNaN(Number(epsTextVal)) ? Number(epsTextVal) : 0;
+        } else {
+          obj.episodes.sub = 0;
+          obj.episodes.dub = 0;
+          obj.episodes.eps = 0;
+        }
         return obj;
       })
       .get();
 
-    const dataType = $(el).find('.cat-heading').text().replace(/\s+/g, '');
-    const normalizedDataType = dataType.charAt(0).toLowerCase() + dataType.slice(1);
-
-    normalizedDataType === 'newOnHiAnime'
-      ? (response.newAdded = data)
-      : (response[normalizedDataType] = data);
+    const catHeadingEl = $(el).find('.cat-heading');
+    const dataType = catHeadingEl.length ? catHeadingEl.text().replace(/\s+/g, '') : '';
+    if (dataType) {
+      const normalizedDataType = dataType.charAt(0).toLowerCase() + dataType.slice(1);
+      normalizedDataType === 'newOnHiAnime'
+        ? (response.newAdded = data)
+        : (response[normalizedDataType] = data);
+    }
   });
 
   const extractTopTen = (id) => {
-    const res = $top10
-      .find(`${id} ul li`)
+    const listItems = $top10.find(`${id} ul li`);
+    if (!listItems.length) return []; // Return empty array if no items
+
+    const res = listItems
       .map((i, el) => {
-        const obj = {
-          title: $(el).find('.film-name a').text() || null,
+        const itemEl = $(el); // Current li element
+        const titleLinkEl = itemEl.find('.film-name a');
+
+        const title = titleLinkEl.length ? titleLinkEl.text() : null;
+        const alternativeTitle = titleLinkEl.length ? titleLinkEl.attr('data-jname') : null;
+        const href = titleLinkEl.length ? titleLinkEl.attr('href') : null;
+        const idVal = href ? href.split('/').pop() : null;
+
+        const posterImgEl = itemEl.find('.film-poster img');
+        const poster = posterImgEl.length ? posterImgEl.attr('data-src') : null;
+
+        const subText = itemEl.find('.tick-item.tick-sub').text();
+        const sub = subText && !isNaN(Number(subText)) ? Number(subText) : 0;
+
+        const dubText = itemEl.find('.tick-item.tick-dub').text();
+        const dub = dubText && !isNaN(Number(dubText)) ? Number(dubText) : 0;
+
+        const epsEl = itemEl.find('.tick-item.tick-eps');
+        const subEl = itemEl.find('.tick-item.tick-sub');
+        const epsTextVal = epsEl.length ? epsEl.text() : (subEl.length ? subEl.text() : '');
+        const eps = epsTextVal && !isNaN(Number(epsTextVal)) ? Number(epsTextVal) : 0;
+
+        return {
+          title: title,
           rank: i + 1,
-          alternativeTitle: $(el).find('.film-name a').attr('data-jname') || null,
-          id: $(el).find('.film-name a').attr('href').split('/').pop() || null,
-          poster: $(el).find('.film-poster img').attr('data-src') || null,
+          alternativeTitle: alternativeTitle,
+          id: idVal,
+          poster: poster,
           episodes: {
-            sub: Number($(el).find('.tick-item.tick-sub').text()),
-            dub: Number($(el).find('.tick-item.tick-dub').text()),
-            eps: $(el).find('.tick-item.tick-eps').length
-              ? Number($(el).find('.tick-item.tick-eps').text())
-              : Number($(el).find('.tick-item.tick-sub').text()),
+            sub: sub,
+            dub: dub,
+            eps: eps,
           },
         };
-        return obj;
       })
       .get();
     return res;
@@ -209,11 +276,14 @@ export const extractHomepage = (html) => {
   response.top10.today = extractTopTen('#top-viewed-day');
   response.top10.week = extractTopTen('#top-viewed-week');
   response.top10.month = extractTopTen('#top-viewed-month');
-  $($genres)
-    .find('li')
-    .each((i, el) => {
-      const genre = $(el).find('a').attr('title').toLocaleLowerCase();
-      response.genres.push(genre);
-    });
+
+  const genreLinks = $genres.find('li a');
+  genreLinks.each((i, el) => {
+    const genreTitle = $(el).attr('title');
+    if (genreTitle) {
+      response.genres.push(genreTitle.toLocaleLowerCase());
+    }
+  });
+
   return response;
 };
